@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Settings</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-[#071025] text-white p-6">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-xl font-semibold mb-4">Settings</h1>
+
+        <div class="mb-4">
+            <label class="text-sm text-gray-300">Preset Teams (choose for left/right)</label>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <select id="presetA" class="p-2 bg-[#0f1724] rounded"></select>
+                <select id="presetB" class="p-2 bg-[#0f1724] rounded"></select>
+            </div>
+            <div class="mt-3 flex gap-2">
+                <button id="applyPresets" class="px-3 py-2 rounded bg-[#3B82F6]">Apply</button>
+                <button id="backButton" class="px-3 py-2 rounded bg-slate-700">Back to Admin</button>
+            </div>
+            
+        </div>
+         
+       
+
+        <div class="mb-4">
+            <label class="text-sm text-gray-300">Position adjustment (X / Y)</label>
+            <div class="flex gap-2 mt-2">
+                <input id="posX" type="number" class="p-2 bg-[#0f1724] rounded w-24" placeholder="X px" />
+                <input id="posY" type="number" class="p-2 bg-[#0f1724] rounded w-24" placeholder="Y px" />
+                <button id="applyPos" class="px-3 py-2 rounded bg-[#6EE7B7] text-black">Apply Position</button>
+            </div>
+            <p class="text-sm text-gray-400 mt-2">Position is stored, display can read it (not used in this sample for
+                absolute positioning).</p>
+        </div>
+
+        <!-- <div class="mb-4">
+            <input id="videoURL" class="p-2 bg-[#0f1724] w-full mb-3" placeholder="YouTube video URL">
+            <button id="applyVideo" class="px-3 py-2 rounded bg-[#3B82F6]">Apply</button>
+        </div> -->
+
+
+        <div class="mt-6 flex gap-3">
+            <button id="resetAll" class="px-3 py-2 rounded bg-red-600">NEW MATCH</button>
+            <button id="saveSettings" class="px-3 py-2 rounded bg-slate-700">Save Settings</button>
+        </div>
+    </div>
+
+    <!-- <script>
+        qs('applyVideo').addEventListener('click', () => {
+            const st = load();
+            st.video = qs('videoURL').value;
+            st.lastUpdated = Date.now();
+            save(st);
+        });
+    </script> -->
+
+    <script>
+        (function () {
+            const teams = ['ARG', 'AUS', 'BEL', 'CAN', 'CHN', 'ENG', 'FRA', 'GER', 'IND', 'IRL', 'MAS', 'NED', 'NZL', 'PAK', 'RSA', 'ESP'];
+            const qs = id => document.getElementById(id);
+            teams.forEach(t => {
+                const o = document.createElement('option'); o.value = t; o.textContent = t; qs('presetA').appendChild(o);
+                const o2 = document.createElement('option'); o2.value = t; o2.textContent = t; qs('presetB').appendChild(o2);
+            });
+
+            function load() { try { return JSON.parse(localStorage.getItem('scoreboardState')) || {}; } catch (e) { return {}; } }
+            function save(s) { localStorage.setItem('scoreboardState', JSON.stringify(s)); }
+
+            const st = load();
+            qs('presetA').value = st.teamA?.name || '';
+            qs('presetB').value = st.teamB?.name || '';
+            qs('posX').value = st.position?.x || 0;
+            qs('posY').value = st.position?.y || 0;
+
+            qs('applyPresets').addEventListener('click', () => {
+                const st = load(); st.teamA = st.teamA || {}; st.teamB = st.teamB || {};
+                st.teamA.name = qs('presetA').value;
+                st.teamB.name = qs('presetB').value;
+                st.lastUpdated = Date.now();
+                save(st); alert('Applied teams.');
+            });
+            qs('backButton').addEventListener('click', () => {
+            window.location.href = "index.html";
+            });
+            qs('applyPos').addEventListener('click', () => {
+                const st = load();
+                st.position = { x: parseInt(qs('posX').value) || 0, y: parseInt(qs('posY').value) || 0 };
+                st.lastUpdated = Date.now();
+                save(st); alert('Position saved.');
+            });
+
+            qs('saveSettings').addEventListener('click', () => {
+                const st = load(); st.settingsSaved = true; st.lastUpdated = Date.now(); save(st); alert('Settings saved.');
+            });
+
+            qs('resetAll').addEventListener('click', () => {
+                if (!confirm('Reset entire scoreboard for a new match (all data)?')) return;
+                localStorage.removeItem('scoreboardState'); 
+                alert('New match started. Scoreboard reset.');
+                location.reload(); 
+            });
+
+
+        })();
+    </script>
+</body>
+
+</html>

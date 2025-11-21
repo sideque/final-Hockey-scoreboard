@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hockey Scoreboard — Admin</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- jsPDF MUST load BEFORE your script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { background: #0F1117; color: #d1d5db; }
+
+        .led {
+            font-family: ui-monospace, monospace;
+            letter-spacing: 0.06em;
+            text-shadow: 0 0 6px rgba(59, 130, 246, 0.8), 0 0 18px rgba(59, 130, 246, 0.35);
+        }
+
+        .glow-green { text-shadow: 0 0 8px rgba(110, 231, 183, 0.9); }
+        .glow-red { text-shadow: 0 0 8px rgba(239, 68, 68, 0.9); }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <div class="max-w-6xl mx-auto p-6">
+        <header class="mb-6">
+            <h1 class="text-2xl font-semibold text-white">Admin Control — Hockey Scoreboard</h1>
+            <p class="text-sm text-gray-400">Stadium LED style — fully synced with Display window.</p>
+        </header>
+
+        <!-- -------------- MAIN SCOREBOARD CARD ---------------- -->
+        <section class="bg-[#111218] rounded-xl p-6 shadow-lg mb-6">
+            <h2 class="text-lg font-medium mb-4">Main Scoreboard</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- TEAM A -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg">
+                    <label class="text-xs text-gray-400 mb-2 block">Left Team</label>
+                    <input id="teamAName" class="w-full p-2 rounded bg-[#0f1724] text-white text-sm" placeholder="Team A" />
+
+                    <div class="flex items-center gap-2 mt-3">
+                        <button id="teamAInc" class="px-3 py-2 rounded bg-blue-600">+1</button>
+                        <button id="teamADec" class="px-3 py-2 rounded bg-red-600">-1</button>
+
+                        <div id="teamAScore" class="ml-auto text-3xl led font-bold">00</div>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-2">
+                        <button id="toggleReferralA" class="px-3 py-1 rounded bg-green-600 text-white text-sm">Referral ✓</button>
+                        <span class="text-gray-400 text-sm">Color:</span>
+                        <input id="colorA" type="color" value="#3B82F6" class="h-8 w-12" />
+                    </div>
+                </div>
+
+                <!-- TIMER -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg text-center flex flex-col items-center">
+                    <label class="text-xs text-gray-400 mb-2">Main Timer</label>
+                    <div id="mainClock" class="led text-6xl font-extrabold">15:00</div>
+                    <div class="mt-3 flex gap-2">
+                        <button id="startTimer" class="px-3 py-2 bg-green-300 text-black rounded">Start</button>
+                        <button id="pauseTimer" class="px-3 py-2 bg-yellow-500 text-black rounded">Pause</button>
+                        <button id="resetTimer" class="px-3 py-2 bg-red-600 text-white rounded">Reset</button>
+                    </div>
+
+                    <label class="text-xs text-gray-400 mt-3 block">Quarter</label>
+                    <select id="quarterSelect" class="w-full p-2 rounded bg-[#0f1724] text-sm">
+                        <option value="1">1st Quarter (15:00)</option>
+                        <option value="2">2nd Quarter (15:00)</option>
+                        <option value="3">3rd Quarter (15:00)</option>
+                        <option value="4">4th Quarter (15:00)</option>
+                    </select>
+
+                    <label class="text-xs text-gray-400 mt-2 block">Break / Warmup</label>
+                    <select id="breakSelect" class="w-full p-2 rounded bg-[#0f1724] text-sm">
+                        <option value="0">None</option>
+                        <option value="120">1st Quarter Break — 2:00</option>
+                        <option value="600">Half Time — 10:00</option>
+                        <option value="120-3">3rd Quarter Break — 2:00</option>
+                        <option value="300">Warm-up — 5:00</option>
+                    </select>
+                </div>
+
+                <!-- TEAM B -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg">
+                    <label class="text-xs text-gray-400 mb-2 block">Right Team</label>
+                    <input id="teamBName" class="w-full p-2 rounded bg-[#0f1724] text-white text-sm" placeholder="Team B" />
+
+                    <div class="flex items-center gap-2 mt-3">
+                        <button id="teamBInc" class="px-3 py-2 rounded bg-blue-600">+1</button>
+                        <button id="teamBDec" class="px-3 py-2 rounded bg-red-600">-1</button>
+
+                        <div id="teamBScore" class="ml-auto text-3xl led font-bold">00</div>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-2">
+                        <button id="toggleReferralB" class="px-3 py-1 rounded bg-green-600 text-white text-sm">Referral ✓</button>
+                        <span class="text-gray-400 text-sm">Color:</span>
+                        <input id="colorB" type="color" value="#EF4444" class="h-8 w-12" />
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SECONDARY TIMERS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+
+                <!-- GOAL TIMER -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg">
+                    <h3 class="text-sm text-gray-300 mb-2">Goal Timer</h3>
+                    <div class="flex items-center gap-2">
+                        <button id="startGoal" class="px-3 py-2 bg-blue-600 rounded">Start</button>
+                        <button id="pauseGoal" class="px-3 py-2 bg-yellow-500 rounded">Pause</button>
+                        <button id="resetGoal" class="px-3 py-2 bg-red-600 rounded">Reset</button>
+                        <div id="goalClock" class="ml-auto led text-xl font-bold">00:20</div>
+                    </div>
+                </div>
+
+                <!-- PENALTY -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg">
+                    <h3 class="text-sm text-gray-300 mb-2">Penalty Corner Timer</h3>
+                    <div class="flex items-center gap-2">
+                        <button id="startPenalty" class="px-3 py-2 bg-yellow-400 text-black rounded">Start</button>
+                        <button id="pausePenalty" class="px-3 py-2 bg-yellow-500 rounded">Pause</button>
+                        <button id="resetPenalty" class="px-3 py-2 bg-red-600 rounded">Reset</button>
+                        <div id="penaltyClock" class="ml-auto led text-xl font-bold">00:40</div>
+                    </div>
+                </div>
+
+                <!-- SHOOTOUT TIMER -->
+                <div class="p-4 bg-[#0b0c10] rounded-lg">
+                    <h3 class="text-sm text-gray-300 mb-2">Shootout Timer</h3>
+                    <div class="flex items-center gap-2">
+                        <button id="startShootout" class="px-3 py-2 bg-blue-600 rounded">Start</button>
+                        <button id="pauseShootout" class="px-3 py-2 bg-yellow-500 rounded">Pause</button>
+                        <button id="resetShootoutTimer" class="px-3 py-2 bg-red-600 rounded">Reset</button>
+                        <div id="shootoutClock" class="ml-auto led text-xl font-bold">08:00</div>
+                    </div>
+
+                    <button id="openShootoutBtn" class="mt-3 px-4 py-2 bg-blue-600 rounded">Open Shootout</button>
+                    <button id="openDisplay" class="ml-2 px-4 py-2 bg-green-300 text-black rounded">Open Display</button>
+                </div>
+
+            </div>
+
+            <!-- SHOOTOUT CONTROL PANEL -->
+            <div id="shootoutControl" class="hidden mt-6 p-4 bg-[#0b0c10] rounded-lg">
+                <div class="flex justify-between">
+                    <h2 class="text-xl font-semibold">Shootout Control</h2>
+                    <button id="closeShootoutView" class="px-3 py-1 bg-gray-700 rounded">Close</button>
+                </div>
+
+                <div class="grid grid-cols-12 gap-2 mt-4 text-center text-sm text-gray-400">
+                    <div>Round</div>
+                    <div>A1</div><div>A2</div><div>A3</div><div>A4</div><div>A5</div>
+                    <div>vs</div>
+                    <div>B1</div><div>B2</div><div>B3</div><div>B4</div><div>B5</div>
+                </div>
+
+                <div id="grid" class="grid grid-cols-12 gap-2 mt-2"></div>
+
+                <div class="flex mt-5 gap-3">
+                    <button id="resetAll" class="px-3 py-2 bg-red-600 rounded">Reset Shootout</button>
+                    <button id="autoNext" class="px-3 py-2 bg-gray-700 rounded">Auto Next</button>
+                    <div class="ml-auto text-gray-300">Score: <span id="soScore">0 - 0</span></div>
+                </div>
+            </div>
+
+            <!-- FOOTER BUTTONS -->
+            <div class="flex flex-wrap gap-3 mt-6">
+                <button id="exportJson" class="px-3 py-2 bg-gray-700 rounded">Export JSON</button>
+
+                <label class="px-3 py-2 bg-gray-700 rounded cursor-pointer">
+                    Import JSON
+                    <input id="importFile" type="file" accept="application/json" class="hidden" />
+                </label>
+
+                <button id="downloadPDF" class="px-3 py-2 bg-blue-600 rounded">Download Scoreboard PDF</button>
+                <button id="clearBtn" class="px-3 py-2 bg-red-600 rounded">Clear Saved Data</button>
+
+                <div class="ml-auto flex gap-3">
+                    <a href="display.html" target="_blank" class="px-3 py-2 bg-gray-900 rounded">Open Display</a>
+                    <a href="custom-message.html" target="_blank" class="px-3 py-2 bg-gray-900 rounded">Message</a>
+                    <a href="settings.html" class="px-3 py-2 bg-gray-900 rounded">Settings</a>
+                </div>
+            </div>
+
+        </section>
+
+        <footer class="text-sm text-gray-500 mt-6">Tip: Open Display on another screen.</footer>
+
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        // STATE HANDLER
+        const qs = id => document.getElementById(id);
+
+        const defaultState = () => ({
+            teamA: { name: 'ARG', score: 0, referral: true, color: '#3B82F6' },
+            teamB: { name: 'AUS', score: 0, referral: true, color: '#EF4444' },
+
+            mainTimer: { seconds: 900, running: false },
+            goalTimer: { seconds: 20, running: false },
+            penaltyTimer: { seconds: 40, running: false },
+            shootoutTimer: { seconds: 8, running: false },
+
+            quarter: 1,
+            phase: "play",
+            phaseDetail: null,
+
+            shootout: {
+                rounds: Array(5).fill().map(() => ({ a: '-', b: '-' })),
+                scoreA: 0,
+                scoreB: 0,
+                suddenDeath: false
+            },
+
+            message: { text: "" },
+            lastUpdated: Date.now()
+        });
+
+        function loadState() {
+            try {
+                return JSON.parse(localStorage.getItem("scoreboardState")) || defaultState();
+            } catch {
+                return defaultState();
+            }
+        }
+
+        function saveState(st) {
+            st.lastUpdated = Date.now();
+            localStorage.setItem("scoreboardState", JSON.stringify(st));
+        }
+
+        let state = loadState();
+        saveState(state);
+
+        // FORMAT TIME
+        function formatTime(sec) {
+            if (sec < 0) sec = 0;
+            return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+        }
+
+        // UI SYNC
+        function refreshUI() {
+            qs("teamAName").value = state.teamA.name;
+            qs("teamBName").value = state.teamB.name;
+
+            qs("teamAScore").textContent = String(state.teamA.score).padStart(2, "0");
+            qs("teamBScore").textContent = String(state.teamB.score).padStart(2, "0");
+
+            qs("mainClock").textContent = formatTime(state.mainTimer.seconds);
+            qs("goalClock").textContent = formatTime(state.goalTimer.seconds);
+            qs("penaltyClock").textContent = formatTime(state.penaltyTimer.seconds);
+            qs("shootoutClock").textContent = formatTime(state.shootoutTimer.seconds);
+
+            qs("quarterSelect").value = state.quarter;
+
+            qs("colorA").value = state.teamA.color;
+            qs("colorB").value = state.teamB.color;
+
+            qs("toggleReferralA").textContent = state.teamA.referral ? "Referral ✓" : "Referral ✕";
+            qs("toggleReferralA").classList.toggle("bg-green-600", state.teamA.referral);
+            qs("toggleReferralA").classList.toggle("bg-red-600", !state.teamA.referral);
+
+            qs("toggleReferralB").textContent = state.teamB.referral ? "Referral ✓" : "Referral ✕";
+            qs("toggleReferralB").classList.toggle("bg-green-600", state.teamB.referral);
+            qs("toggleReferralB").classList.toggle("bg-red-600", !state.teamB.referral);
+        }
+
+        refreshUI();
+
+        // TIMER LOOPS
+        let mainInterval = null, goalInterval = null, penaltyInterval = null, shootoutInterval = null;
+
+        function createTimer(timerKey, displayId, defaultSec, callbackEnd) {
+            function start() {
+                if (window[timerKey]) return;
+                state[timerKey].running = true;
+                saveState(state);
+
+                window[timerKey] = setInterval(() => {
+                    if (!state[timerKey].running) {
+                        clearInterval(window[timerKey]);
+                        window[timerKey] = null;
+                        return;
+                    }
+
+                    if (state[timerKey].seconds > 0) {
+                        state[timerKey].seconds--;
+                        saveState(state);
+                        qs(displayId).textContent = formatTime(state[timerKey].seconds);
+                    } else {
+                        clearInterval(window[timerKey]);
+                        window[timerKey] = null;
+                        state[timerKey].running = false;
+                        saveState(state);
+                        if (callbackEnd) callbackEnd();
+                    }
+
+                }, 1000);
+            }
+
+            function pause() {
+                state[timerKey].running = false;
+                saveState(state);
+                clearInterval(window[timerKey]);
+                window[timerKey] = null;
+            }
+
+            function reset() {
+                state[timerKey].seconds = defaultSec;
+                state[timerKey].running = false;
+                saveState(state);
+                clearInterval(window[timerKey]);
+                window[timerKey] = null;
+                qs(displayId).textContent = formatTime(defaultSec);
+            }
+
+            return { start, pause, reset };
+        }
+
+        // Build timers
+        const mainTimer = createTimer("mainTimer", "mainClock", 900, () => {});
+        const goalTimer = createTimer("goalTimer", "goalClock", 20, () => {});
+        const penaltyTimer = createTimer("penaltyTimer", "penaltyClock", 40, () => {});
+        const shootoutTimer = createTimer("shootoutTimer", "shootoutClock", 8, () => {
+            state.shootoutTimer.seconds = 8;
+            state.shootoutTimer.running = false;
+            saveState(state);
+            qs("shootoutClock").textContent = formatTime(8);
+        });
+
+         //EVENT LISTENERS — SCORES & TEAM SETTINGS
+        qs("teamAInc").onclick = () => { state.teamA.score++; saveState(state); refreshUI(); };
+        qs("teamADec").onclick = () => { state.teamA.score = Math.max(0, state.teamA.score - 1); saveState(state); refreshUI(); };
+        qs("teamBInc").onclick = () => { state.teamB.score++; saveState(state); refreshUI(); };
+        qs("teamBDec").onclick = () => { state.teamB.score = Math.max(0, state.teamB.score - 1); saveState(state); refreshUI(); };
+
+        qs("teamAName").oninput = e => { state.teamA.name = e.target.value; saveState(state); };
+        qs("teamBName").oninput = e => { state.teamB.name = e.target.value; saveState(state); };
+
+        qs("toggleReferralA").onclick = () => { state.teamA.referral = !state.teamA.referral; saveState(state); refreshUI(); };
+        qs("toggleReferralB").onclick = () => { state.teamB.referral = !state.teamB.referral; saveState(state); refreshUI(); };
+
+        qs("colorA").onchange = e => { state.teamA.color = e.target.value; saveState(state); };
+        qs("colorB").onchange = e => { state.teamB.color = e.target.value; saveState(state); };
+
+        
+        //  MAIN TIMER EVENTS
+        qs("startTimer").onclick = mainTimer.start;
+        qs("pauseTimer").onclick = mainTimer.pause;
+        qs("resetTimer").onclick = () => mainTimer.reset();
+
+        qs("quarterSelect").onchange = e => {
+            state.quarter = parseInt(e.target.value);
+            mainTimer.reset();
+        };
+
+        qs("breakSelect").onchange = e => {
+            let val = e.target.value;
+            if (val == "0") return mainTimer.reset();
+
+            let seconds = val.includes('-') ? parseInt(val.split("-")[0]) : parseInt(val);
+            state.mainTimer.seconds = seconds;
+            state.mainTimer.running = false;
+
+            if (val == "300") state.phaseDetail = "Warm-up";
+            else if (val == "120") state.phaseDetail = "1st Quarter Break";
+            else if (val == "600") state.phaseDetail = "Half Time";
+            else if (val == "120-3") state.phaseDetail = "3rd Quarter Break";
+
+            saveState(state);
+            refreshUI();
+        };
+
+        // SECONDARY TIMERS
+        qs("startGoal").onclick = goalTimer.start;
+        qs("pauseGoal").onclick = goalTimer.pause;
+        qs("resetGoal").onclick = goalTimer.reset;
+
+        qs("startPenalty").onclick = penaltyTimer.start;
+        qs("pausePenalty").onclick = penaltyTimer.pause;
+        qs("resetPenalty").onclick = penaltyTimer.reset;
+
+        qs("startShootout").onclick = shootoutTimer.start;
+        qs("pauseShootout").onclick = shootoutTimer.pause;
+        qs("resetShootoutTimer").onclick = shootoutTimer.reset;
+
+        qs("openDisplay").onclick = () => window.open("display.html", "ScoreboardDisplay", "width=1200,height=700");
+
+        // SHOOTOUT SYSTEM
+        const shootoutPanel = qs("shootoutControl");
+
+        qs("openShootoutBtn").onclick = () => {
+            shootoutPanel.classList.remove("hidden");
+            buildShootout();
+        };
+
+        qs("closeShootoutView").onclick = () => {
+            shootoutPanel.classList.add("hidden");
+        };
+
+        function buildShootout() {
+            const grid = qs("grid");
+            grid.innerHTML = "";
+
+            // Empty cell (round column)
+            grid.appendChild(document.createElement("div"));
+
+            // Team A rounds
+            for (let i = 0; i < 5; i++) {
+                makeCell(i, "a");
+            }
+
+            // "vs"
+            const vsCell = document.createElement("div");
+            vsCell.textContent = "vs";
+            vsCell.className = "flex justify-center items-center text-gray-400";
+            grid.appendChild(vsCell);
+
+            // Team B rounds
+            for (let i = 0; i < 5; i++) {
+                makeCell(i, "b");
+            }
+
+            qs("soScore").textContent = `${state.shootout.scoreA} - ${state.shootout.scoreB}`;
+        }
+
+        function makeCell(round, team) {
+            const cell = document.createElement("div");
+            cell.className = "p-3 bg-[#0f1724] rounded cursor-pointer";
+            cell.innerHTML = `
+                <div class="text-xs text-gray-300">${team.toUpperCase()}${round + 1}</div>
+                <div class="text-xl font-bold">${state.shootout.rounds[round][team]}</div>
+            `;
+            cell.onclick = () => openPicker(round, team);
+            qs("grid").appendChild(cell);
+        }
+
+        function openPicker(round, team) {
+            const overlay = document.createElement("div");
+            overlay.className = "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center";
+
+            const box = document.createElement("div");
+            box.className = "bg-[#071022] p-6 rounded shadow-lg w-60 text-center";
+
+            box.innerHTML = `
+                <div class="text-gray-300 mb-3">Round ${round + 1} — Team ${team.toUpperCase()}</div>
+                <button class="optionBtn block w-full my-1 p-2 bg-green-600 rounded">GOAL</button>
+                <button class="optionBtn block w-full my-1 p-2 bg-red-600 rounded">NO GOAL</button>
+                <button class="optionBtn block w-full my-1 p-2 bg-gray-700 rounded">DEFAULT</button>
+            `;
+
+            box.querySelectorAll(".optionBtn").forEach(btn => {
+                btn.onclick = () => {
+                    applyShootout(round, team, btn.textContent);
+                    document.body.removeChild(overlay);
+                };
+            });
+
+            overlay.onclick = e => {
+                if (e.target === overlay) document.body.removeChild(overlay);
+            };
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+        }
+
+        function applyShootout(round, team, choice) {
+            const val = choice === "GOAL" ? "G" : choice === "NO GOAL" ? "X" : "-";
+            state.shootout.rounds[round][team] = val;
+
+            let scoreA = 0, scoreB = 0;
+            state.shootout.rounds.forEach(r => {
+                if (r.a === "G") scoreA++;
+                if (r.b === "G") scoreB++;
+            });
+
+            state.shootout.scoreA = scoreA;
+            state.shootout.scoreB = scoreB;
+
+            state.shootout.suddenDeath =
+                state.shootout.rounds.every(r => r.a !== "-" && r.b !== "-") &&
+                scoreA === scoreB;
+
+            saveState(state);
+            buildShootout();
+        }
+
+        qs("resetAll").onclick = () => {
+            if (!confirm("Reset entire shootout?")) return;
+
+            state.shootout = {
+                rounds: Array(5).fill().map(() => ({ a: "-", b: "-" })),
+                scoreA: 0,
+                scoreB: 0,
+                suddenDeath: false
+            };
+
+            saveState(state);
+            buildShootout();
+        };
+
+        // Simple auto mode
+        let autoRun = false;
+        qs("autoNext").onclick = () => {
+            autoRun = !autoRun;
+            qs("autoNext").textContent = autoRun ? "Stop Auto" : "Auto Next";
+            if (autoRun) autoLoop();
+        };
+
+        async function autoLoop() {
+            for (let i = 0; i < 5; i++) {
+                if (!autoRun) break;
+
+                if (state.shootout.rounds[i].a === "-") {
+                    applyShootout(i, "a", "NO GOAL");
+                    await new Promise(r => setTimeout(r, 700));
+                }
+                if (!autoRun) break;
+
+                if (state.shootout.rounds[i].b === "-") {
+                    applyShootout(i, "b", "NO GOAL");
+                    await new Promise(r => setTimeout(r, 700));
+                }
+            }
+            autoRun = false;
+            qs("autoNext").textContent = "Auto Next";
+        }
+
+        // EXPORT / IMPORT JSON
+        qs("exportJson").onclick = () => {
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "scoreboardState.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        qs("importFile").onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const obj = JSON.parse(reader.result);
+                    state = obj;
+                    saveState(state);
+                    refreshUI();
+                    alert("Imported successfully!");
+                } catch {
+                    alert("Invalid JSON file!");
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // PDF DOWNLOAD (FIXED)
+        qs("downloadPDF").onclick = () => {
+            const jsPDF = window.jspdf?.jsPDF;
+            if (!jsPDF) return alert("jsPDF failed to load!");
+
+            const doc = new jsPDF();
+
+            doc.setFontSize(18);
+            doc.text("Hockey Scoreboard Report", 105, 20, { align: "center" });
+
+            doc.setFontSize(12);
+            doc.text(`Team A: ${state.teamA.name} — ${state.teamA.score}`, 20, 40);
+            doc.text(`Team B: ${state.teamB.name} — ${state.teamB.score}`, 20, 50);
+            doc.text(`Quarter: ${state.quarter}`, 20, 60);
+            doc.text(`Main Timer: ${formatTime(state.mainTimer.seconds)}`, 20, 70);
+
+            doc.text(`Shootout Score: ${state.shootout.scoreA} - ${state.shootout.scoreB}`, 20, 90);
+
+            doc.save(`scoreboard-${new Date().toISOString().slice(0, 10)}.pdf`);
+        };
+
+        // CLEAR STORAGE
+        qs("clearBtn").onclick = () => {
+            if (!confirm("Clear ALL data?")) return;
+            localStorage.removeItem("scoreboardState");
+            state = defaultState();
+            saveState(state);
+            refreshUI();
+        };
+
+        // SYNC ACROSS TABS
+        window.addEventListener("storage", () => {
+            state = loadState();
+            refreshUI();
+            buildShootout();
+        });
+
+    </script>
+
+</body>
+</html>

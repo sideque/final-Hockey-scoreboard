@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hockey Scoreboard — Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background: linear-gradient(180deg, #0F1117, #0B0C10);
+      color: #fff;
+    }
+
+    .led {
+      font-family: ui-monospace, "Roboto Mono", monospace;
+      letter-spacing: .08em;
+      text-shadow: 0 0 10px rgba(59, 130, 246, 0.9), 0 0 28px rgba(59, 130, 246, 0.25);
+    }
+
+    .big-timer {
+      font-size: clamp(48px, 8vw, 128px);
+    }
+
+    .teamName {
+      font-size: clamp(16px, 2vw, 28px);
+      font-weight: 600;
+      letter-spacing: .06em;
+    }
+
+    .referral {
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* -------------------- FULL-SCREEN MESSAGE OVERLAY -------------------- */
+    #fullScreenMessage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(180deg, #0F1117, #0B0C10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      transform: scale(0.95);
+      transition: all 0.4s ease;
+      font-size: clamp(2rem, 10vw, 12rem);
+      font-family: ui-monospace, "Roboto Mono", monospace;
+      font-weight: font-black;
+      text-align: center;
+      padding: 2rem;
+      box-sizing: border-box;
+      color: #fff;
+      letter-spacing: 0.1em;
+      text-shadow: 
+        0 0 20px rgba(255, 255, 255, 0.8), 
+        0 0 40px rgba(59, 130, 246, 0.6), 
+        0 0 60px rgba(59, 130, 246, 0.3);
+    }
+
+    #fullScreenMessage.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Blink Animation */
+    .blink {
+      animation: blinkEffect 1s infinite;
+    }
+
+    @keyframes blinkEffect {
+      0% { opacity: 1; }
+      50% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    /* Hide scoreboard when message is active (full screen only) */
+    .scoreboard-content.hidden {
+      display: none !important;
+    }
+
+    /* Left Corner Message */
+    #cornerMessage {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(15, 17, 23, 0.9);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      border: 2px solid rgba(59, 130, 246, 0.5);
+      z-index: 50;
+      font-size: clamp(1rem, 2vw, 2rem);
+      font-family: ui-monospace, "Roboto Mono", monospace;
+      font-weight: bold;
+      color: #fff;
+      letter-spacing: 0.05em;
+      text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.3s ease;
+      max-width: 400px;
+    }
+
+    #cornerMessage.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen relative">
+  <audio id="beepSound" src="src/beep.mp3.wav" preload="auto"></audio>
+  <!-- FULL-SCREEN MESSAGE OVERLAY -->
+  <div id="fullScreenMessage" class="hidden"></div>
+  <!-- LEFT CORNER MESSAGE -->
+  <div id="cornerMessage" class="hidden"></div>
+
+  <!-- SCOREBOARD CONTENT -->
+  <div id="scoreboardContent" class="scoreboard-content">
+    <div class="max-w-7xl mx-auto py-8 px-4">
+  
+      <div class="grid grid-cols-12 gap-6 items-center">
+  
+        <!-- Team A -->
+        <div class="col-span-3 bg-transparent text-left">
+          <div id="displayTeamAName" class="teamName">TEAM A</div>
+          <div id="displayTeamAScore" class="text-7xl led font-black mt-4">00</div>
+          <div id="displayReferralA" class="mt-4 referral bg-green-600 text-black">Referral</div>
+        </div>
+  
+        <!-- Center -->
+        <div class="col-span-6 text-center">
+          <div id="displayQuarter" class="text-sm text-gray-400 mb-2">1st Quarter</div>
+          <div id="displayMainClock" class="big-timer led font-extrabold">15:00</div>
+  
+          <div class="mt-4 flex justify-center gap-6">
+            <div class="text-center">
+              <div class="text-xs text-gray-400">Goal Timer</div>
+              <div id="displayGoal" class="led text-2xl">00:20</div>
+            </div>
+            <div class="text-center">
+              <div class="text-xs text-gray-400">Penalty Timer</div>
+              <div id="displayPenalty" class="led text-2xl">00:40</div>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Team B -->
+        <div class="col-span-3 text-right">
+          <div id="displayTeamBName" class="teamName">TEAM B</div>
+          <div id="displayTeamBScore" class="text-7xl led font-black mt-4">00</div>
+          <div id="displayReferralB" class="mt-4 referral bg-green-600 text-black">Referral</div>
+        </div>
+      </div>
+  
+      <!-- SHOOTOUT DISPLAY -->
+      <div id="shootoutControl" class="mt-8 p-4 bg-[#081226] rounded-lg">
+  
+        <!-- Header -->
+        <div class="flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-white">Shootout</h2>
+            <div class="text-white led text-xl" id="displaySOScore">0 - 0</div>
+        </div>
+  
+        <!-- Timer -->
+        <div class="mt-2 text-gray-400 flex justify-start items-center gap-2">
+            <div>Timer:</div>
+            <div class="text-white led text-xl" id="displaySOTimer">08:00</div>
+        </div>
+  
+        <!-- Column Headers -->
+        <div class="grid grid-cols-12 gap-2 mt-4 text-center text-sm text-gray-400">
+            <div>Round</div>
+            <div>A1</div><div>A2</div><div>A3</div><div>A4</div><div>A5</div>
+            <div>vs</div>
+            <div>B1</div><div>B2</div><div>B3</div><div>B4</div><div>B5</div>
+        </div>
+  
+        <!-- Shootout Grid -->
+        <div id="soGrid" class="grid grid-cols-12 gap-2 mt-2"></div>
+  
+      </div>
+  
+    </div>
+  </div>
+  
+
+  <!-- SCRIPT -->
+  <script>
+    (function () {
+      const qs = id => document.getElementById(id);
+
+      function load() {
+        try { return JSON.parse(localStorage.getItem("scoreboardState")) || {}; }
+        catch { return {}; }
+      }
+
+      const fullScreenMsg = qs("fullScreenMessage");
+      const cornerMsg = qs("cornerMessage");
+      const scoreboardContent = qs("scoreboardContent");
+
+      // Track beep state to prevent multiple beeps
+      let prev = { mainBeep: false, shootoutBeep: false };
+
+      function formatTime(seconds) {
+        if (seconds == null || isNaN(seconds)) seconds = 0;
+        const m = Math.floor(seconds / 60), s = seconds % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+
+      function getQuarterText(quarter, phase, phaseDetail) {
+        if (phase === 'warmup') {
+          return 'WARM UP';
+        }
+        if (phase === 'break' && phaseDetail) {
+          return phaseDetail;
+        }
+        const suffixes = ['', 'st', 'nd', 'rd', 'th'];
+        return `${quarter}${suffixes[quarter] || 'th'} Quarter`;
+      }
+
+      function updateDisplay() {
+        const st = load();
+
+        // Update Message (full-screen or left corner based on position)
+        const text = st.message?.text || "";
+        const position = st.message?.position || "full";
+        
+        if (text.trim()) {
+          if (position === "corner") {
+            // Left corner message: show message in corner, keep scoreboard visible
+            scoreboardContent.classList.remove("hidden");
+            fullScreenMsg.classList.remove("show", "blink");
+            fullScreenMsg.classList.add("hidden");
+            
+            cornerMsg.classList.remove("hidden");
+            cornerMsg.textContent = text;
+            requestAnimationFrame(() => cornerMsg.classList.add("show"));
+            
+            if (st.message?.blink) {
+              cornerMsg.classList.add("blink");
+            } else {
+              cornerMsg.classList.remove("blink");
+            }
+          } else {
+            // Full screen message: hide scoreboard, show message
+            scoreboardContent.classList.add("hidden");
+            cornerMsg.classList.remove("show", "blink");
+            cornerMsg.classList.add("hidden");
+            
+            fullScreenMsg.classList.remove("hidden");
+            fullScreenMsg.textContent = text;
+            requestAnimationFrame(() => fullScreenMsg.classList.add("show"));
+
+            if (st.message?.blink) {
+              fullScreenMsg.classList.add("blink");
+            } else {
+              fullScreenMsg.classList.remove("blink");
+            }
+          }
+        } else {
+          // No message: Show scoreboard, hide all messages
+          fullScreenMsg.classList.remove("show", "blink");
+          fullScreenMsg.classList.add("hidden");
+          cornerMsg.classList.remove("show", "blink");
+          cornerMsg.classList.add("hidden");
+          scoreboardContent.classList.remove("hidden");
+        }
+
+
+        
+//         // BEEP + AUTO RESET WHEN TIMER HITS 00:00
+// if (st.mainTimer.seconds === 0 && prev.mainBeep !== true) {
+//   const beep = document.getElementById("beepSound");
+//   beep.currentTime = 0;
+//   beep.play();
+//   prev.mainBeep = true;
+
+//   // Reset timer to 15:00 (900 seconds)
+//   st.mainTimer.seconds = 900;
+
+//   // Save back to localStorage so render picks it up
+//   localStorage.setItem('scoreboardState', JSON.stringify(st));
+// }
+
+// // Allow beep again once timer is running
+// if (st.mainTimer.seconds > 0) {
+//   prev.mainBeep = false;
+// }
+
+
+        // BEEP WHEN MAIN TIMER HITS 00:00
+        if (st.mainTimer?.seconds === 0 && prev.mainBeep !== true) {
+            const beep = document.getElementById("beepSound");
+            beep.currentTime = 0; // rewind sound to start
+            beep.play();           // play beep
+            prev.mainBeep = true;  // mark that beep has been played
+        }
+
+        // BEEP WHEN SHOOTOUT TIMER HITS 00:00
+        if (st.shootoutTimer?.seconds === 0 && prev.shootoutBeep !== true) {
+            const beep = document.getElementById("beepSound");
+            beep.currentTime = 0; // rewind sound to start
+            beep.play();           // play beep
+            prev.shootoutBeep = true;  // mark that beep has been played
+        }
+
+        // Reset beep flags when timers are running again
+        if (st.mainTimer?.seconds > 0) {
+            prev.mainBeep = false;
+        }
+        if (st.shootoutTimer?.seconds > 0) {
+            prev.shootoutBeep = false;
+        }
+
+
+        // Update Scoreboard Elements
+        qs("displayTeamAName").textContent = st.teamA?.name || "TEAM A";
+        qs("displayTeamBName").textContent = st.teamB?.name || "TEAM B";
+        qs("displayTeamAScore").textContent = String(st.teamA?.score || 0).padStart(2, '0');
+        qs("displayTeamBScore").textContent = String(st.teamB?.score || 0).padStart(2, '0');
+        
+        // Apply team colors
+        if (st.teamA?.color) {
+          qs("displayTeamAScore").style.color = st.teamA.color;
+        }
+        if (st.teamB?.color) {
+          qs("displayTeamBScore").style.color = st.teamB.color;
+        }
+        qs("displayMainClock").textContent = formatTime(st.mainTimer?.seconds || 900);
+        qs("displayGoal").textContent = formatTime(st.goalTimer?.seconds || 20);
+        qs("displayPenalty").textContent = formatTime(st.penaltyTimer?.seconds || 40);
+        qs("displayQuarter").textContent = getQuarterText(st.quarter || 1, st.phase, st.phaseDetail);
+        qs("displaySOTimer").textContent = formatTime(st.shootoutTimer?.seconds || 8 * 60);
+        qs("displaySOScore").textContent = `${st.shootout?.scoreA || 0} - ${st.shootout?.scoreB || 0}`;
+
+        // Update Referrals (show/hide based on state)
+        const refA = qs("displayReferralA");
+        const refB = qs("displayReferralB");
+        if (st.teamA?.referral) {
+          refA.style.display = "block";
+          refA.className = "mt-4 referral bg-green-600 text-black";
+        } else {
+          refA.style.display = "none";
+        }
+        if (st.teamB?.referral) {
+          refB.style.display = "block";
+          refB.className = "mt-4 referral bg-green-600 text-black";
+        } else {
+          refB.style.display = "none";
+        }
+
+        // Shootout Grid (basic: clear and add rounds if present; minimal for now)
+        function buildShootoutDisplay() {
+    const soGrid = document.getElementById("soGrid");
+    const soScore = document.getElementById("displaySOScore");
+    const soTimer = document.getElementById("displaySOTimer");
+
+    let st = JSON.parse(localStorage.getItem("scoreboardState"));
+    if (!st) return;
+
+    soGrid.innerHTML = "";
+
+    st.shootout.rounds.forEach((r, i) => {
+        const row = [
+            i + 1,
+            r.a1 || r.a || "-",
+            r.a2 || "-",
+            r.a3 || "-",
+            r.a4 || "-",
+            r.a5 || "-",
+            "vs",
+            r.b1 || r.b || "-",
+            r.b2 || "-",
+            r.b3 || "-",
+            r.b4 || "-",
+            r.b5 || "-"
+        ];
+
+        row.forEach(v => {
+            const cell = document.createElement("div");
+            cell.className = "text-center text-sm led border border-gray-700 py-1";
+            cell.textContent = v;
+            soGrid.appendChild(cell);
+        });
+    });
+
+    soScore.textContent = `${st.shootout.scoreA} - ${st.shootout.scoreB}`;
+    soTimer.textContent = formatTime(st.shootoutTimer.seconds);
+}
+
+window.addEventListener("storage", buildShootoutDisplay);
+window.addEventListener("load", buildShootoutDisplay);
+
+
+      }
+
+      // Poll every 500ms for live updates
+      setInterval(updateDisplay, 500);
+      updateDisplay(); // Initial load
+    })();
+  </script>
+
+</body>
+</html>

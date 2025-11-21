@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Break Timer Setup</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-[#071025] text-white p-6">
+  <div class="max-w-xl mx-auto">
+    <h1 class="text-xl font-semibold mb-4">Break & Warm-up Setup</h1>
+    <div class="grid grid-cols-2 gap-3">
+      <button data-sec="120" class="setupBtn px-3 py-2 rounded bg-slate-700">1st Quarter Break — 2:00</button>
+      <button data-sec="600" class="setupBtn px-3 py-2 rounded bg-slate-700">Half Time — 10:00</button>
+      <button data-sec="120" class="setupBtn px-3 py-2 rounded bg-slate-700">3rd Quarter Break — 2:00</button>
+      <button data-sec="300" class="setupBtn px-3 py-2 rounded bg-slate-700">Warm-up — 5:00</button>
+    </div>
+
+    <div class="mt-4">
+      <label class="text-sm text-gray-300">Custom seconds</label>
+      <input id="customSec" type="number" class="w-full p-2 rounded bg-[#0f1724]" placeholder="seconds"/>
+      <div class="mt-3 flex gap-3">
+        <button id="applyCustom" class="px-3 py-2 rounded bg-[#3B82F6]">Apply</button>
+        <button id="startMain" class="px-3 py-2 rounded bg-green-500">Start Main Timer</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const qs = id => document.getElementById(id);
+  function load(){ try{ return JSON.parse(localStorage.getItem('scoreboardState'))|| {}; }catch(e){ return {}; } }
+  function save(st){ localStorage.setItem('scoreboardState', JSON.stringify(st)); }
+
+  document.querySelectorAll('.setupBtn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const sec = parseInt(b.dataset.sec);
+      const st = load();
+      st.mainTimer = { seconds: sec, running: false };
+      save(st); alert('Applied ' + sec + ' seconds to main timer.');
+    });
+  });
+
+  qs('applyCustom').addEventListener('click', ()=>{
+    const sec = parseInt(qs('customSec').value) || 0;
+    const st = load(); st.mainTimer = { seconds: sec, running:false }; save(st); alert('Custom time applied.');
+  });
+
+  qs('startMain').addEventListener('click', ()=>{
+    const st = load(); st.mainTimer.running = true; save(st); alert('Set main timer to running. Use admin page to start countdown.');
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Custom Scoreboard Message</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+  <div class="max-w-md w-full space-y-4">
+    <h1 class="text-2xl font-bold text-center">Custom Message Admin</h1>
+    <textarea 
+      id="messageInput" 
+      rows="4" 
+      placeholder="Enter your custom message here..."
+      class="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+    ></textarea>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <button 
+        id="displayBtn" 
+        class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+      >
+        Display on Scoreboard
+      </button>
+      <button 
+        id="clearBtn" 
+        class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors"
+      >
+        Clear Message
+      </button>
+      <button 
+  id="backButton" 
+  class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-800 rounded-lg font-medium transition-colors" 
+>
+  Back to Admin
+</button>
+
+    </div>
+    <!-- Optional Blink Toggle -->
+    <label class="flex items-center space-x-2">
+      <input type="checkbox" id="blinkToggle" class="rounded">
+      <span class="text-sm text-gray-300">Enable Blink Mode</span>
+    </label>
+    <!-- Display Position -->
+    <div class="space-y-2">
+      <label class="text-sm text-gray-300">Display Position:</label>
+      <div class="flex gap-4">
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="messagePosition" id="positionFull" value="full" checked class="rounded">
+          <span class="text-sm text-gray-300">Full Screen</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="messagePosition" id="positionCorner" value="corner" class="rounded">
+          <span class="text-sm text-gray-300">Left Corner</span>
+        </label>
+      </div>
+    </div>
+    <p class="text-xs text-gray-400 text-center">Changes save to localStorage and update the display page automatically.</p>
+  </div>
+
+  <script>
+    // Helper to get element by ID
+    const getEl = (id) => document.getElementById(id);
+
+    // Load state from localStorage, default to empty object if error
+    const loadState = () => {
+      try {
+        return JSON.parse(localStorage.getItem('scoreboardState')) || {};
+      } catch (e) {
+        console.warn('Failed to load state:', e);
+        return {};
+      }
+    };
+
+    // Save state to localStorage
+    const saveState = (state) => {
+      try {
+        localStorage.setItem('scoreboardState', JSON.stringify(state));
+      } catch (e) {
+        console.warn('Failed to save state:', e);
+      }
+    };
+
+    // Event listener for Display button
+    getEl('displayBtn').addEventListener('click', () => {
+      const state = loadState();
+      const messageText = getEl('messageInput').value.trim();
+      const blinkEnabled = getEl('blinkToggle').checked;
+      const position = getEl('positionFull').checked ? 'full' : 'corner';
+      
+      state.message = {
+        text: messageText,
+        blink: blinkEnabled,
+        position: position
+      };
+      
+      saveState(state);
+      // Optional: Visual feedback
+      getEl('displayBtn').textContent = 'Updated!';
+      setTimeout(() => {
+        getEl('displayBtn').textContent = 'Display on Scoreboard';
+      }, 1000);
+    });
+
+    getEl('backButton').addEventListener('click', () => {
+      window.location.href = "index.html";
+    });
+
+    // Event listener for Clear button
+    getEl('clearBtn').addEventListener('click', () => {
+      const state = loadState();
+      state.message = null; // Set to null to indicate no message
+      saveState(state);
+      getEl('messageInput').value = '';
+      getEl('blinkToggle').checked = false;
+      // Optional: Visual feedback
+      getEl('clearBtn').textContent = 'Cleared!';
+      setTimeout(() => {
+        getEl('clearBtn').textContent = 'Clear Message';
+      }, 1000);
+    });
+
+    // Load current state on page load to sync UI
+    const initUI = () => {
+      const state = loadState();
+      if (state.message) {
+        getEl('messageInput').value = state.message.text || '';
+        getEl('blinkToggle').checked = state.message.blink || false;
+        if (state.message.position === 'corner') {
+          getEl('positionCorner').checked = true;
+        } else {
+          getEl('positionFull').checked = true;
+        }
+      }
+    };
+
+    // Initialize on load
+    initUI();
+  </script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Shootout Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    .cell { min-width:56px; min-height:56px; display:flex; align-items:center; justify-content:center; border-radius:8px; }
+  </style>
+</head>
+<body class="bg-[#071022] text-white p-6">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-xl font-semibold mb-4">Shootout Control</h1>
+    
+    <!-- Shootout Timer -->
+    <div class="mb-6 p-4 bg-[#0b0c10] rounded-lg">
+      <h3 class="text-sm text-gray-300 mb-2">Shootout Timer</h3>
+      <div class="flex items-center gap-2">
+        <button id="startShootout" class="px-3 py-2 rounded bg-[#3B82F6]">Start</button>
+        <button id="pauseShootout" class="px-3 py-2 rounded bg-[#F59E0B]">Pause</button>
+        <button id="resetShootoutTimer" class="px-3 py-2 rounded bg-[#ef4444]">Reset</button>
+        <div id="shootoutClock" class="ml-auto led text-2xl font-bold">08:00</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-2 items-center">
+      <div class="text-gray-400">Round</div>
+      <div class="text-center">A1</div><div class="text-center">A2</div><div class="text-center">A3</div><div class="text-center">A4</div><div class="text-center">A5</div>
+      <div class="text-center">vs</div>
+      <div class="text-center">B1</div><div class="text-center">B2</div><div class="text-center">B3</div><div class="text-center">B4</div><div class="text-center">B5</div>
+    </div>
+
+    <div id="grid" class="mt-4 grid grid-cols-12 gap-2"></div>
+
+    <div class="mt-6 flex gap-3">
+      <button id="resetAll" class="px-3 py-2 rounded bg-red-600">Reset Shootout</button>
+      <button id="autoNext" class="px-3 py-2 rounded bg-slate-700">Auto Next Round</button>
+      <div class="ml-auto text-gray-300">Score: <span id="soScore">0 - 0</span></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const qs = id => document.getElementById(id);
+  function load(){ try{ return JSON.parse(localStorage.getItem('scoreboardState')) || {}; }catch(e){ return {}; } }
+  function save(st){ localStorage.setItem('scoreboardState', JSON.stringify(st)); }
+
+  let st = load();
+  if (!st.shootout) st.shootout = { rounds:Array(5).fill().map(()=>({a:'-',b:'-'})), currentRound:0, scoreA:0, scoreB:0, suddenDeath:false };
+  if (!st.shootoutTimer) st.shootoutTimer = { seconds: 8 * 60, running: false };
+  save(st);
+
+  // Shootout Timer Functions
+  let shootoutInterval = null;
+  function formatTime(seconds) {
+    if (seconds == null || isNaN(seconds)) seconds = 0;
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function startShootoutTimer() {
+    if (shootoutInterval) return;
+    if (!st.shootoutTimer) st.shootoutTimer = { seconds: 8 * 60, running: false };
+    st.shootoutTimer.running = true; save(st);
+    shootoutInterval = setInterval(() => {
+      if (!st.shootoutTimer.running) { clearInterval(shootoutInterval); shootoutInterval = null; return; }
+      if (st.shootoutTimer.seconds > 0) { 
+        st.shootoutTimer.seconds -= 1; 
+        save(st); 
+        qs('shootoutClock').textContent = formatTime(st.shootoutTimer.seconds); 
+      } else { 
+        st.shootoutTimer.running = false; 
+        save(st); 
+        clearInterval(shootoutInterval); 
+        shootoutInterval = null; 
+        // Play hooter sound
+        try { 
+          new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); 
+        } catch (e) {} 
+      }
+    }, 1000);
+  }
+
+  function pauseShootoutTimer() { 
+    if (!st.shootoutTimer) st.shootoutTimer = { seconds: 8 * 60, running: false };
+    st.shootoutTimer.running = false; 
+    save(st); 
+    if (shootoutInterval) { clearInterval(shootoutInterval); shootoutInterval = null; } 
+  }
+
+  function resetShootoutTimer() { 
+    if (!st.shootoutTimer) st.shootoutTimer = { seconds: 8 * 60, running: false };
+    st.shootoutTimer.seconds = 8 * 60; 
+    st.shootoutTimer.running = false; 
+    save(st); 
+    qs('shootoutClock').textContent = formatTime(st.shootoutTimer.seconds); 
+  }
+
+  // Initialize timer display
+  qs('shootoutClock').textContent = formatTime(st.shootoutTimer?.seconds || 8 * 60);
+
+  // Timer event listeners
+  qs('startShootout').addEventListener('click', startShootoutTimer);
+  qs('pauseShootout').addEventListener('click', pauseShootoutTimer);
+  qs('resetShootoutTimer').addEventListener('click', resetShootoutTimer);
+
+  function build(){
+    const grid = qs('grid'); grid.innerHTML='';
+    for(let i=0;i<5;i++){
+      // A cell
+      const a = document.createElement('div'); a.className='cell bg-[#0f1724] p-3 text-center rounded';
+      a.id = `A${i}`; a.innerHTML = `<div class="text-sm text-gray-300">A${i+1}</div><div class="text-xl" data-val>${st.shootout.rounds[i].a}</div>`;
+      a.addEventListener('click', ()=> openPicker(i,'a'));
+      grid.appendChild(a);
+    }
+    // separator for symmetry
+    const sep = document.createElement('div'); sep.className='col-span-1 flex items-center justify-center text-gray-400'; sep.textContent='vs'; grid.appendChild(sep);
+    for(let i=0;i<5;i++){
+      const b = document.createElement('div'); b.className='cell bg-[#0f1724] p-3 text-center rounded';
+      b.id = `B${i}`; b.innerHTML = `<div class="text-sm text-gray-300">B${i+1}</div><div class="text-xl" data-val>${st.shootout.rounds[i].b}</div>`;
+      b.addEventListener('click', ()=> openPicker(i,'b'));
+      grid.appendChild(b);
+    }
+    qs('soScore').textContent = `${st.shootout.scoreA} - ${st.shootout.scoreB}`;
+  }
+
+  function openPicker(round, team){
+    const menu = document.createElement('div'); menu.className='fixed left-0 top-0 w-full h-full flex items-center justify-center';
+    const box = document.createElement('div'); box.className='bg-[#071022] p-6 rounded shadow-lg';
+    box.innerHTML = `<div class="mb-3">Round ${round+1} - Team ${team.toUpperCase()}</div>`;
+    ['GOAL','NO GOAL','DEFAULT'].forEach(opt=>{
+      const btn = document.createElement('button'); btn.className='px-3 py-2 m-1 rounded bg-slate-700';
+      btn.textContent = opt;
+      btn.addEventListener('click', ()=>{
+        applyRound(round, team, opt);
+        document.body.removeChild(menu);
+      });
+      box.appendChild(btn);
+    });
+    menu.appendChild(box); menu.addEventListener('click',(e)=>{ if(e.target===menu) document.body.removeChild(menu); });
+    document.body.appendChild(menu);
+  }
+
+  function applyRound(round, team, opt){
+    const val = (opt==='GOAL') ? 'G' : (opt==='NO GOAL' ? 'X' : '-');
+    if (team==='a'){
+      st.shootout.rounds[round].a = val;
+    } else {
+      st.shootout.rounds[round].b = val;
+    }
+    // recalc scores
+    let sa=0,sb=0;
+    for(let r of st.shootout.rounds){
+      if (r.a === 'G') sa++;
+      if (r.b === 'G') sb++;
+    }
+    st.shootout.scoreA = sa; st.shootout.scoreB = sb;
+    // sudden death check after 5 rounds
+    if (st.shootout.rounds.every(r=> r.a!=='-' && r.b!=='-') && st.shootout.scoreA === st.shootout.scoreB){
+      st.shootout.suddenDeath = true;
+    } else st.shootout.suddenDeath = false;
+    save(st);
+    localStorage.setItem('scoreboardState', JSON.stringify(st));
+    build();
+  }
+
+  qs('resetAll').addEventListener('click', ()=>{
+    if(!confirm('Reset shootout?')) return;
+    st.shootout = { rounds:Array(5).fill().map(()=>({a:'-',b:'-'})), currentRound:0, scoreA:0, scoreB:0, suddenDeath:false };
+    save(st); build();
+  });
+
+  let auto = false;
+  qs('autoNext').addEventListener('click', ()=> {
+    auto = !auto;
+    qs('autoNext').textContent = auto ? 'Stop Auto' : 'Auto Next Round';
+    if (auto) nextRoundLoop();
+  });
+  async function nextRoundLoop(){
+    for(let r=0;r<5 && auto;r++){
+      // place default 'GOAL' for A and then for B to simulate (this is demo automation — admin will manually set)
+      await new Promise(res=> setTimeout(res, 700));
+      if (!auto) break;
+      if (st.shootout.rounds[r].a === '-') { applyRound(r,'a','NO GOAL'); }
+      await new Promise(res=> setTimeout(res, 700));
+      if (!auto) break;
+      if (st.shootout.rounds[r].b === '-') { applyRound(r,'b','NO GOAL'); }
+    }
+    auto = false; qs('autoNext').textContent = 'Auto Next Round';
+  }
+
+  // listen storage changes (if admin modified other tabs)
+  window.addEventListener('storage', ()=>{ 
+    st = load(); 
+    build(); 
+    if (st.shootoutTimer) {
+      qs('shootoutClock').textContent = formatTime(st.shootoutTimer.seconds);
+    }
+  });
+
+  build();
+
+})();
+</script>
+</body>
+</html>
