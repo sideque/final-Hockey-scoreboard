@@ -566,24 +566,151 @@
 
         // PDF DOWNLOAD (FIXED)
         qs("downloadPDF").onclick = () => {
-            const jsPDF = window.jspdf?.jsPDF;
-            if (!jsPDF) return alert("jsPDF failed to load!");
+    const jsPDF = window.jspdf?.jsPDF;
+    if (!jsPDF) return alert("jsPDF failed to load!");
 
-            const doc = new jsPDF();
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-            doc.setFontSize(18);
-            doc.text("Hockey Scoreboard Report", 105, 20, { align: "center" });
+    const line = (y) => doc.line(40, y, 555, y);
 
-            doc.setFontSize(12);
-            doc.text(`Team A: ${state.teamA.name} — ${state.teamA.score}`, 20, 40);
-            doc.text(`Team B: ${state.teamB.name} — ${state.teamB.score}`, 20, 50);
-            doc.text(`Quarter: ${state.quarter}`, 20, 60);
-            doc.text(`Main Timer: ${formatTime(state.mainTimer.seconds)}`, 20, 70);
+    let y = 50;
 
-            doc.text(`Shootout Score: ${state.shootout.scoreA} - ${state.shootout.scoreB}`, 20, 90);
+    // ---------- HEADER ----------
+    doc.setFontSize(22);
+    doc.text("Hockey Match Report", 297, y, { align: "center" });
+    y += 30;
+    line(y);
+    y += 20;
 
-            doc.save(`scoreboard-${new Date().toISOString().slice(0, 10)}.pdf`);
-        };
+    // ---------- TEAMS ----------
+    doc.setFontSize(16);
+    doc.text("Teams", 40, y);
+    y += 20;
+    doc.setFontSize(12);
+
+    doc.text(`Left Team:  ${state.teamA.name}`, 40, y);
+    doc.setTextColor(state.teamA.color);
+    doc.text("■", 180, y);
+    doc.setTextColor("#000");
+    doc.text(`Score: ${state.teamA.score}`, 200, y);
+    doc.text(`Referral: ${state.teamA.referral ? "Available" : "Used"}`, 300, y);
+
+    y += 20;
+
+    doc.text(`Right Team: ${state.teamB.name}`, 40, y);
+    doc.setTextColor(state.teamB.color);
+    doc.text("■", 180, y);
+    doc.setTextColor("#000");
+    doc.text(`Score: ${state.teamB.score}`, 200, y);
+    doc.text(`Referral: ${state.teamB.referral ? "Available" : "Used"}`, 300, y);
+
+    y += 20;
+    line(y);
+    y += 20;
+
+    // ---------- MAIN TIMER ----------
+    doc.setFontSize(16);
+    doc.text("Match Timing", 40, y);
+    y += 20;
+    doc.setFontSize(12);
+
+    doc.text(`Quarter: ${state.quarter}`, 40, y);
+    y += 20;
+    doc.text(`Main Timer Remaining: ${formatTime(state.mainTimer.seconds)}`, 40, y);
+    y += 20;
+
+    if (state.phaseDetail) {
+        doc.text(`Current Phase: ${state.phaseDetail}`, 40, y);
+        y += 20;
+    }
+
+    line(y);
+    y += 20;
+
+    // ---------- SECONDARY TIMERS ----------
+    doc.setFontSize(16);
+    doc.text("Secondary Timers", 40, y);
+    y += 20;
+    doc.setFontSize(12);
+
+    doc.text(`Goal Timer: ${formatTime(state.goalTimer.seconds)}`, 40, y);
+    y += 20;
+    doc.text(`Penalty Corner Timer: ${formatTime(state.penaltyTimer.seconds)}`, 40, y);
+    y += 20;
+    doc.text(`Shootout Timer: ${formatTime(state.shootoutTimer.seconds)}`, 40, y);
+
+    y += 20;
+    line(y);
+    y += 20;
+
+    // ---------- SHOOTOUT ----------
+    doc.setFontSize(16);
+    doc.text("Shootout Summary", 40, y);
+    y += 25;
+    doc.setFontSize(12);
+
+    doc.text(`Final Shootout Score: ${state.shootout.scoreA} - ${state.shootout.scoreB}`, 40, y);
+    y += 20;
+
+    if (state.shootout.suddenDeath) {
+        doc.setTextColor("#d00");
+        doc.text("Sudden Death was required", 40, y);
+        doc.setTextColor("#000");
+        y += 20;
+    }
+
+    // SHOOTOUT TABLE
+    const tableX = 40;
+    let colWidth = 45;
+
+    doc.setFontSize(11);
+    doc.text("Rnd", tableX, y);
+
+    for (let i = 0; i < 5; i++) {
+        doc.text(`A${i + 1}`, tableX + (i + 1) * colWidth, y);
+    }
+
+    doc.text("vs", tableX + 6 * colWidth, y);
+
+    for (let i = 0; i < 5; i++) {
+        doc.text(`B${i + 1}`, tableX + (7 + i) * colWidth, y);
+    }
+
+    y += 15;
+
+    for (let r = 0; r < 5; r++) {
+        doc.text(String(r + 1), tableX, y);
+
+        for (let i = 0; i < 5; i++) {
+            if (i === r) {
+                doc.text(state.shootout.rounds[r].a, tableX + (i + 1) * colWidth, y);
+                doc.text(state.shootout.rounds[r].b, tableX + (7 + i) * colWidth, y);
+            }
+        }
+
+        y += 18;
+    }
+
+    line(y);
+    y += 20;
+
+    // ---------- CUSTOM MESSAGE ----------
+    doc.setFontSize(16);
+    doc.text("Custom Message", 40, y);
+    y += 20;
+    doc.setFontSize(12);
+    doc.text(state.message.text || "(none)", 40, y);
+
+    y += 30;
+
+    // ---------- TIME GENERATED ----------
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 40, y);
+
+    // SAVE PDF
+    doc.save(`scoreboard-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
 
         // CLEAR STORAGE
         qs("clearBtn").onclick = () => {
